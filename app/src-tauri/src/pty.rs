@@ -132,17 +132,28 @@ pub async fn pty_write(
             let line = state.line_buf.lock().trim().to_string();
             state.line_buf.lock().clear();
 
-            if line.starts_with("@zingx ") {
-                let prompt = line[7..].trim().to_string();
+            // Check for @zingx command (with or without space)
+            if line.starts_with("@zingx") {
+                let prompt = if line.len() > 6 {
+                    line[6..].trim().to_string()
+                } else {
+                    String::new()
+                };
+
                 let _ = app.emit("pty-output", "\r\n");
-                match crate::ollama::zingx_ask(prompt).await {
-                    Ok(resp) => {
-                        for l in resp.lines() {
-                            let _ = app.emit("pty-output", format!("\x1b[90m{l}\x1b[0m\r\n"));
+
+                if prompt.is_empty() {
+                    let _ = app.emit("pty-output", "\x1b[33mUsage: @zingx <your question>\x1b[0m\r\n");
+                } else {
+                    match crate::ollama::zingx_ask(prompt).await {
+                        Ok(resp) => {
+                            for l in resp.lines() {
+                                let _ = app.emit("pty-output", format!("\x1b[90m{l}\x1b[0m\r\n"));
+                            }
                         }
-                    }
-                    Err(e) => {
-                        let _ = app.emit("pty-output", format!("\x1b[31m{e}\x1b[0m\r\n"));
+                        Err(e) => {
+                            let _ = app.emit("pty-output", format!("\x1b[31m{e}\x1b[0m\r\n"));
+                        }
                     }
                 }
                 continue;
