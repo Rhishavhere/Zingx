@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Default Zingx capabilities","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open"]}}
+{"default":{"identifier":"default","description":"Default Zingx capabilities","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:webview:default","shell:allow-open","allow-zingx"]}}

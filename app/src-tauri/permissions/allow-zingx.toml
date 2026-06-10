@@ -1,0 +1,16 @@
+[[permission]]
+identifier = "allow-zingx"
+description = "Enables Zingx custom IPC commands."
+commands.allow = [
+  "pty_spawn",
+  "pty_write",
+  "pty_resize",
+  "zingx_ask",
+  "chat_list",
+  "chat_create",
+  "chat_load",
+  "chat_send",
+  "utils_status",
+  "host_gallery_start",
+  "host_gallery_stop",
+]

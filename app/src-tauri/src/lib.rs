@@ -14,6 +14,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             pty::pty_spawn,
             pty::pty_write,
+            pty::pty_resize,
             ollama::zingx_ask,
             chat::chat_list,
             chat::chat_create,

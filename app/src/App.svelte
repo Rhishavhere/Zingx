@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { Terminal } from "@xterm/xterm";
@@ -9,6 +9,7 @@
   import ChatsPane from "./lib/ChatsPane.svelte";
   import UtilsPane from "./lib/UtilsPane.svelte";
   import HostPane from "./lib/HostPane.svelte";
+  import BrowserPane from "./lib/BrowserPane.svelte";
 
   let mode: AppMode = $state("shell");
   let browserUrl = $state("https://duckduckgo.com");
@@ -17,6 +18,8 @@
   let termEl: HTMLDivElement;
   let term: Terminal;
   let fitAddon: FitAddon;
+  let ptyReady = $state(false);
+  let ptyError = $state("");
 
   const modes: { id: AppMode; label: string; key: string }[] = [
     { id: "shell", label: "shell", key: "1" },
@@ -33,29 +36,47 @@
     browserUrl = urlInput.trim() || "about:blank";
   }
 
-  onMount(() => {
+  async function resizePty() {
+    if (!term || !ptyReady) return;
+    fitAddon.fit();
+    await invoke("pty_resize", { cols: term.cols, rows: term.rows });
+  }
+
+  onMount(async () => {
+    await tick();
+    if (!termEl) return;
+
     term = new Terminal({
       cursorBlink: true,
+      convertEol: true,
       theme: {
         background: "#0a0a0a",
         foreground: "#c8ffc8",
         cursor: "#00ff66",
       },
-      fontFamily: "IBM Plex Mono, monospace",
+      fontFamily: "IBM Plex Mono, Consolas, monospace",
       fontSize: 14,
     });
     fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(termEl);
     fitAddon.fit();
+    term.focus();
 
     term.onData((data) => {
-      invoke("pty_write", { data }).catch(console.error);
+      invoke("pty_write", { data }).catch((err) => {
+        term.writeln(`\r\n\x1b[31m[pty] ${String(err)}\x1b[0m`);
+      });
     });
 
-    invoke("pty_spawn").catch(() => {
-      term.writeln("\x1b[33m[dev] PTY unavailable\x1b[0m");
-    });
+    try {
+      await invoke("pty_spawn");
+      ptyReady = true;
+      await resizePty();
+    } catch (err) {
+      ptyError = String(err);
+      term.writeln(`\x1b[31mPTY failed: ${ptyError}\x1b[0m`);
+    }
 
     const unlisten = listen<string>("pty-output", (ev) => {
       term.write(ev.payload);
@@ -77,8 +98,11 @@
         term.focus();
       }
     };
+
     window.addEventListener("keydown", onKey);
-    window.addEventListener("resize", () => fitAddon.fit());
+    window.addEventListener("resize", () => {
+      resizePty().catch(console.error);
+    });
 
     return () => {
       unlisten.then((fn) => fn());
@@ -91,7 +115,7 @@
 <div class="zingx">
   <header class="bar">
     <span class="logo">ZINGX</span>
-    <span class="status">vault ● wifi ●</span>
+    <span class="status">{ptyReady ? "pty ●" : "pty ✗"} vault ● wifi ●</span>
   </header>
 
   <main class="body">
@@ -99,15 +123,15 @@
       <section class="split" class:focus-right={focusBrowser}>
         <div class="pane terminal-pane">
           <div class="pane-label">terminal</div>
-          <div class="term" bind:this={termEl}></div>
+          <div class="term" bind:this={termEl} onclick={() => term?.focus()}></div>
         </div>
         <div class="pane browser-pane">
           <div class="pane-label">internet</div>
           <form class="urlbar" onsubmit={(e) => { e.preventDefault(); navigate(); }}>
-            <input bind:value={urlInput} spellcheck="false" />
+            <input bind:value={urlInput} spellcheck="false" placeholder="https://..." />
             <button type="submit">go</button>
           </form>
-          <iframe title="browser" src={browserUrl} sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+          <BrowserPane url={browserUrl} visible={mode === "shell"} />
         </div>
       </section>
     {:else if mode === "chats"}
@@ -125,7 +149,7 @@
         [{m.key}] {m.label}
       </button>
     {/each}
-    <span class="hint">Alt+1–4 · Esc → shell · Alt+←/→ focus</span>
+    <span class="hint">Alt+1–4 · Esc → shell · Alt+←/→ focus · @zingx prompt</span>
   </footer>
 </div>
 
@@ -186,6 +210,7 @@
     padding: 0.25rem;
     min-height: 0;
     height: 100%;
+    cursor: text;
   }
 
   .urlbar {
@@ -198,13 +223,6 @@
   .urlbar input {
     flex: 1;
     padding: 0.25rem 0.5rem;
-  }
-
-  iframe {
-    width: 100%;
-    height: 100%;
-    border: 0;
-    background: #000;
   }
 
   .focus-right .terminal-pane {
