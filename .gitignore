@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+app/node_modules/
+
+# Rust / Tauri
+app/src-tauri/target/
+**/*.rs.bk
+
+# Frontend build
+app/dist/
+app/.svelte-kit/
+
+# Local dev data (mock partitions)
+dev-data/
+dev-vault/
+
+# Buildroot
+buildroot/
+output/
+dl/
+.br2-external.mk
+os/.config
+os/.config.old
+*.log
+
+# OS build artifacts
+artifacts/
+*.img
+*.iso
+*.squashfs
+*.cpio
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# npm
+npm-debug.log*

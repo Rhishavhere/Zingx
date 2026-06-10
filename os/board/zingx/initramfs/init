@@ -1,0 +1,46 @@
+#!/bin/sh
+# Zingx early init — load rootfs.squashfs from ZINGX_BOOT into RAM
+
+set -e
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || mount -t tmpfs devtmpfs /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts 2>/dev/null || true
+
+echo "Zingx booting..."
+
+# Allow USB/storage to settle
+sleep 2
+
+BOOT=""
+for dev in /dev/sd*[0-9] /dev/nvme*n*p*; do
+	[ -b "$dev" ] || continue
+	label=$(blkid -s LABEL -o value "$dev" 2>/dev/null || true)
+	[ "$label" = "ZINGX_BOOT" ] && BOOT="$dev" && break
+done
+
+if [ -z "$BOOT" ]; then
+	echo "ERROR: ZINGX_BOOT partition not found."
+	echo "Insert Zingx USB and reboot."
+	exec /bin/sh
+fi
+
+mkdir -p /boot /newroot
+mount -t vfat -o ro "$BOOT" /boot
+
+if [ ! -f /boot/rootfs.squashfs ]; then
+	echo "ERROR: /boot/rootfs.squashfs missing."
+	exec /bin/sh
+fi
+
+mount -t squashfs -o ro,loop /boot/rootfs.squashfs /newroot
+
+mkdir -p /newroot/boot /newroot/proc /newroot/sys /newroot/dev
+mount --move /boot /newroot/boot
+mount --move /proc /newroot/proc
+mount --move /sys /newroot/sys
+mount --move /dev /newroot/dev
+
+exec switch_root /newroot /sbin/init

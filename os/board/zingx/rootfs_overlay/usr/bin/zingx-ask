@@ -1,0 +1,24 @@
+#!/bin/sh
+# One-shot Ollama query (terminal @zingx helper)
+prompt="$*"
+if [ -z "$prompt" ]; then
+	echo "usage: zingx-ask <prompt>"
+	exit 1
+fi
+
+host="${OLLAMA_HOST:-http://127.0.0.1:11434}"
+model="${ZINGX_MODEL:-gemma3:1b}"
+
+payload=$(printf '{"model":"%s","prompt":"%s","stream":false}' "$model" "$prompt")
+
+if ! command -v curl >/dev/null 2>&1; then
+	echo "curl not available"
+	exit 1
+fi
+
+resp=$(curl -sf "$host/api/generate" -d "$payload" 2>/dev/null) || {
+	echo "Ollama unavailable at $host"
+	exit 1
+}
+
+echo "$resp" | sed -n 's/.*"response":"\([^"]*\)".*/\1/p' | sed 's/\\n/\n/g'
