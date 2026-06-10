@@ -1,0 +1,12 @@
+config BR2_PACKAGE_ZINGX_INIT
+	bool "zingx init scripts"
+	default y
+	help
+	  Boot-time init scripts for Zingx USB appliance.
+
+config BR2_PACKAGE_ZINGX_APP
+	bool "zingx tauri app binary"
+	default y
+	depends on BR2_PACKAGE_ZINGX_INIT
+	help
+	  Install the prebuilt Zingx UI binary from board/zingx/rootfs_overlay.

@@ -1,0 +1,86 @@
+#!/bin/sh
+#
+# Zingx late boot — mount data partitions, start services
+#
+
+DATA_DEV=""
+VAULT_DEV=""
+
+find_parts() {
+	for dev in /dev/sd*[0-9] /dev/nvme*n*p*; do
+		[ -b "$dev" ] || continue
+		label=$(blkid -s LABEL -o value "$dev" 2>/dev/null)
+		case "$label" in
+			ZINGX_DATA) DATA_DEV="$dev" ;;
+			ZINGX_VAULT) VAULT_DEV="$dev" ;;
+		esac
+	done
+}
+
+mount_data() {
+	find_parts
+	if [ -n "$DATA_DEV" ]; then
+		mkdir -p /mnt/data
+		mount -t exfat -o uid=0,gid=0,umask=022 "$DATA_DEV" /mnt/data 2>/dev/null \
+			|| mount "$DATA_DEV" /mnt/data 2>/dev/null
+		mkdir -p /mnt/data/models /mnt/data/chats /mnt/data/notes
+	fi
+}
+
+mount_vault() {
+	if [ -z "$VAULT_DEV" ]; then
+		mkdir -p /mnt/vault
+		return
+	fi
+	if [ -f /zingx/skip-vault ]; then
+		mkdir -p /mnt/vault
+		return
+	fi
+	echo ""
+	echo "  Welcome Rhishav. Decrypting vault..."
+	echo ""
+	cryptsetup open "$VAULT_DEV" zingx_vault && \
+		mount /dev/mapper/zingx_vault /mnt/vault
+	mkdir -p /mnt/vault/browser
+}
+
+start_wifi() {
+	if [ -x /etc/init.d/S40network ]; then
+		/etc/init.d/S40network start
+	fi
+}
+
+start_ollama() {
+	if [ -x /usr/bin/ollama ]; then
+		export OLLAMA_MODELS=/mnt/data/models
+		ollama serve >/var/log/ollama.log 2>&1 &
+	fi
+}
+
+start_ui() {
+	if [ -x /usr/bin/zingx-app ]; then
+		export ZINGX_DATA=/mnt/data
+		export ZINGX_VAULT=/mnt/vault
+		export WAYLAND_DISPLAY=wayland-0
+		# Cage runs zingx-app when available; fallback stays on tty1 shell
+		if pidof cage >/dev/null 2>&1; then
+			return
+		fi
+	fi
+}
+
+case "$1" in
+	start)
+		mount_data
+		mount_vault
+		start_wifi
+		start_ollama
+		start_ui
+		;;
+	stop)
+		;;
+	*)
+		echo "Usage: $0 {start|stop}"
+		exit 1
+		;;
+esac

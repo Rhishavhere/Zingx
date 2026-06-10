@@ -1,0 +1,8 @@
+export PS1='[\u@\h \W]\$ '
+export PATH="/usr/local/bin:/usr/bin:/bin"
+export EDITOR=nano
+export HOME=/root
+
+if [ -d /mnt/data/notes ]; then
+  alias notes='cd /mnt/data/notes'
+fi

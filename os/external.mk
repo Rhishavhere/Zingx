@@ -1,0 +1,1 @@
+# Zingx Buildroot external tree
