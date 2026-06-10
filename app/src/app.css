@@ -1,0 +1,44 @@
+:root {
+  --bg: #0a0a0a;
+  --fg: #c8ffc8;
+  --dim: #3a5a3a;
+  --accent: #00ff66;
+  --panel: #111;
+  --border: #1f1f1f;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+button {
+  cursor: pointer;
+}
+
+button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:hover {
+  border-color: var(--dim);
+}
