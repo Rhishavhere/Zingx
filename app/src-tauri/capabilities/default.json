@@ -7,6 +7,13 @@
     "core:default",
     "core:event:default",
     "core:webview:default",
+    "core:webview:allow-create-webview",
+    "core:webview:allow-set-webview-position",
+    "core:webview:allow-set-webview-size",
+    "core:webview:allow-webview-close",
+    "core:webview:allow-webview-show",
+    "core:webview:allow-webview-hide",
+    "core:window:default",
     "shell:allow-open",
     "allow-zingx"
   ]

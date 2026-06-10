@@ -13,13 +13,17 @@
 
   let mode: AppMode = $state("shell");
   let browserUrl = $state("https://duckduckgo.com");
-  let urlInput = $state(browserUrl);
+  let urlInput = $state("https://duckduckgo.com");
   let focusBrowser = $state(false);
-  let termEl: HTMLDivElement;
+  let termEl: HTMLDivElement = $state();
   let term: Terminal;
   let fitAddon: FitAddon;
   let ptyReady = $state(false);
   let ptyError = $state("");
+
+  $effect(() => {
+    urlInput = browserUrl;
+  });
 
   const modes: { id: AppMode; label: string; key: string }[] = [
     { id: "shell", label: "shell", key: "1" },
@@ -60,8 +64,14 @@
     fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(termEl);
-    fitAddon.fit();
-    term.focus();
+    
+    // Use a small timeout to ensure the container is fully rendered and sized
+    setTimeout(() => {
+      if (term && fitAddon) {
+        fitAddon.fit();
+        term.focus();
+      }
+    }, 50);
 
     term.onData((data) => {
       invoke("pty_write", { data }).catch((err) => {
@@ -72,7 +82,9 @@
     try {
       await invoke("pty_spawn");
       ptyReady = true;
-      await resizePty();
+      setTimeout(() => {
+        resizePty().catch(console.error);
+      }, 100);
     } catch (err) {
       ptyError = String(err);
       term.writeln(`\x1b[31mPTY failed: ${ptyError}\x1b[0m`);
@@ -123,6 +135,8 @@
       <section class="split" class:focus-right={focusBrowser}>
         <div class="pane terminal-pane">
           <div class="pane-label">terminal</div>
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div class="term" bind:this={termEl} onclick={() => term?.focus()}></div>
         </div>
         <div class="pane browser-pane">
@@ -179,6 +193,7 @@
 
   .body {
     min-height: 0;
+    height: 100%;
   }
 
   .split {
@@ -189,12 +204,13 @@
 
   .pane {
     display: grid;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto 1fr;
     min-height: 0;
     border-right: 1px solid var(--border);
   }
 
   .browser-pane {
+    grid-template-rows: auto auto 1fr;
     border-right: none;
   }
 
